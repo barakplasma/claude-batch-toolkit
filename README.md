@@ -383,10 +383,9 @@ Assistant message arrives
 |----------|---------|-------------|
 | `ANTHROPIC_API_KEY` | — | Your Anthropic API key (required) |
 | `CLAUDE_BATCH_DIR` | `~/.claude/batches` | Where jobs.json and results live |
-| `CLAUDE_MODEL` | `claude-opus-4-6` | Model for batch jobs |
-| `CLAUDE_MAX_TOKENS` | `32768` | Max output tokens |
-| `CLAUDE_THINKING` | — | Set to `enabled` for extended thinking |
-| `CLAUDE_THINKING_BUDGET` | — | Legacy fixed thinking budget; unset uses adaptive thinking (rejected by Opus 4.7+, which only accept adaptive) |
+| `CLAUDE_MODEL` | `claude-opus-5-5` | Model for batch jobs |
+| `CLAUDE_MAX_TOKENS` | `64000` | Max output tokens (thinking counts toward it) |
+| `CLAUDE_BATCH_EFFORT` | `high` | `output_config.effort` (`low`/`medium`/`high`/`xhigh`/`max`); Opus 5.5 always thinks and effort controls how much |
 
 ### Vertex AI (optional)
 
@@ -395,7 +394,7 @@ Use Vertex AI as an alternative backend when you want batch processing through G
 #### Prerequisites
 
 1. A GCP project with the Vertex AI API enabled
-2. The `claude-opus-4-6` (or other Claude model) available in your region
+2. The `claude-opus-5-5` (or other Claude model) available in your region
 3. A GCS bucket in a supported region for batch input/output
 4. Application Default Credentials configured:
 
@@ -476,8 +475,8 @@ For more details, see the [Vertex AI Claude batch documentation](https://docs.cl
 
 | Model | Standard | Batch (50% off) |
 |-------|----------|-----------------|
-| Claude Opus 4 | $15 / $75 per 1M tokens | **$7.50 / $37.50** |
-| Claude Sonnet 4 | $3 / $15 per 1M tokens | **$1.50 / $7.50** |
+| Claude Opus 5.5 (default) | $4 / $20 per 1M tokens | **$2 / $10** |
+| Claude Sonnet 5.5 | $2 / $10 per 1M tokens | **$1 / $5** |
 
 (Input / Output per million tokens)
 
