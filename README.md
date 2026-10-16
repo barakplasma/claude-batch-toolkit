@@ -386,7 +386,7 @@ Assistant message arrives
 | `CLAUDE_MODEL` | `claude-opus-4-6` | Model for batch jobs |
 | `CLAUDE_MAX_TOKENS` | `32768` | Max output tokens |
 | `CLAUDE_THINKING` | — | Set to `enabled` for extended thinking |
-| `CLAUDE_THINKING_BUDGET` | — | Token budget for thinking |
+| `CLAUDE_THINKING_BUDGET` | — | Legacy fixed thinking budget; unset uses adaptive thinking (rejected by Opus 4.7+, which only accept adaptive) |
 
 ### Vertex AI (optional)
 

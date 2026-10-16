@@ -36,7 +36,7 @@ Optional:
   CLAUDE_MODEL=claude-opus-4-6       # default model name (both backends use same model string)
   CLAUDE_MAX_TOKENS=32768            # default max_tokens
   CLAUDE_THINKING=enabled            # passed through to Anthropic Messages schema where supported
-  CLAUDE_THINKING_BUDGET=4096        # optional; depends on model/features
+  CLAUDE_THINKING_BUDGET=4096        # optional legacy budget; unset = adaptive thinking
   ANTHROPIC_VERSION=2023-06-01       # default header for Anthropic REST
 
 NOTE:
@@ -461,7 +461,8 @@ def submit_job(packet: str, backend_choice: str, label: Optional[str], base_dir:
     thinking_cfg = None
     if os.getenv("CLAUDE_THINKING", "").lower() in ("1", "true", "yes", "enabled"):
         budget = os.getenv("CLAUDE_THINKING_BUDGET")
-        thinking_cfg = {"type": "enabled", **({"budget_tokens": int(budget)} if budget else {})}
+        # "enabled" requires budget_tokens (400 without it); adaptive is the current form on 4.6+.
+        thinking_cfg = {"type": "enabled", "budget_tokens": int(budget)} if budget else {"type": "adaptive"}
 
     if backend == "anthropic":
         api_key = os.environ.get("ANTHROPIC_API_KEY")
