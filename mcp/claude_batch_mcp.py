@@ -33,10 +33,9 @@ Vertex:
 Optional:
   VERTEX_GCS_PREFIX=claude-batch     # default folder prefix in the bucket
   CLAUDE_BATCH_DIR=~/.claude/batches # override local state dir
-  CLAUDE_MODEL=claude-opus-4-6       # default model name (both backends use same model string)
-  CLAUDE_MAX_TOKENS=32768            # default max_tokens
-  CLAUDE_THINKING=enabled            # passed through to Anthropic Messages schema where supported
-  CLAUDE_THINKING_BUDGET=4096        # optional; depends on model/features
+  CLAUDE_MODEL=claude-opus-5-5       # default model name (both backends use same model string)
+  CLAUDE_MAX_TOKENS=64000            # default max_tokens (thinking counts toward it)
+  CLAUDE_BATCH_EFFORT=high           # output_config.effort: low|medium|high|xhigh|max
   ANTHROPIC_VERSION=2023-06-01       # default header for Anthropic REST
 
 NOTE:
@@ -67,8 +66,10 @@ DEFAULT_LOCAL_DIR = os.path.expanduser(os.getenv("CLAUDE_BATCH_DIR", "~/.claude/
 RESULTS_DIRNAME = "results"
 JOBS_FILENAME = "jobs.json"
 
-DEFAULT_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-4-6")
-DEFAULT_MAX_TOKENS = int(os.getenv("CLAUDE_MAX_TOKENS", "32768"))
+DEFAULT_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
+DEFAULT_MAX_TOKENS = int(os.getenv("CLAUDE_MAX_TOKENS", "64000"))
+# Opus 5.5 always thinks (adaptive); effort is the only control and its API default is "medium".
+DEFAULT_EFFORT = os.getenv("CLAUDE_BATCH_EFFORT", "high")  # not CLAUDE_EFFORT: Claude Code sets that in the MCP env
 DEFAULT_ANTHROPIC_VERSION = os.getenv("ANTHROPIC_VERSION", "2023-06-01")
 
 ANTHROPIC_API_BASE = "https://api.anthropic.com"
@@ -210,16 +211,15 @@ class AnthropicBatchBackend:
         }
 
     def submit_one(self, *, prompt_text: str, model: str = DEFAULT_MODEL, max_tokens: int = DEFAULT_MAX_TOKENS,
-                   thinking: Optional[Dict[str, Any]] = None, custom_id: Optional[str] = None) -> str:
+                   effort: str = DEFAULT_EFFORT, custom_id: Optional[str] = None) -> str:
         if custom_id is None:
             custom_id = f"cc-{int(time.time())}-{random.randint(1000,9999)}"
         params: Dict[str, Any] = {
             "model": model,
             "max_tokens": max_tokens,
             "messages": [{"role": "user", "content": prompt_text}],
+            "output_config": {"effort": effort},
         }
-        if thinking:
-            params["thinking"] = thinking
 
         payload = {"requests": [{"custom_id": custom_id, "params": params}]}
         url = f"{ANTHROPIC_API_BASE}/v1/messages/batches"
@@ -270,6 +270,10 @@ class AnthropicBatchBackend:
                     texts.append(block.get("text", ""))
             if texts:
                 out_chunks.append("\n".join(texts))
+            # Refusals and max_tokens cut-offs otherwise surface as an empty or silently truncated result.
+            stop = message.get("stop_reason")
+            if stop in ("refusal", "max_tokens"):
+                out_chunks.append(f"[stop_reason={stop} {json.dumps(message.get('stop_details'))}]")
         return "\n\n".join(out_chunks).strip()
 
 
@@ -347,6 +351,7 @@ class VertexBatchBackend:
                 "messages": [{"role": "user", "content": prompt_text}],
                 "anthropic_version": VERTEX_ANTHROPIC_VERSION,
                 "max_tokens": max_tokens,
+                "output_config": {"effort": DEFAULT_EFFORT},
             },
         }
         input_jsonl = json.dumps(input_obj, ensure_ascii=False) + "\n"
@@ -458,18 +463,13 @@ def submit_job(packet: str, backend_choice: str, label: Optional[str], base_dir:
     model = DEFAULT_MODEL
     max_tokens = DEFAULT_MAX_TOKENS
 
-    thinking_cfg = None
-    if os.getenv("CLAUDE_THINKING", "").lower() in ("1", "true", "yes", "enabled"):
-        budget = os.getenv("CLAUDE_THINKING_BUDGET")
-        thinking_cfg = {"type": "enabled", **({"budget_tokens": int(budget)} if budget else {})}
-
     if backend == "anthropic":
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             raise RuntimeError("ANTHROPIC_API_KEY is required for anthropic backend.")
         b = AnthropicBatchBackend(api_key=api_key)
         custom_id = f"cc-{int(time.time())}-{random.randint(1000,9999)}"
-        batch_id = b.submit_one(prompt_text=packet, model=model, max_tokens=max_tokens, thinking=thinking_cfg, custom_id=custom_id)
+        batch_id = b.submit_one(prompt_text=packet, model=model, max_tokens=max_tokens, custom_id=custom_id)
         job_id = batch_id
         result_path, meta_path = make_result_paths(results_dir, job_id)
         rec = JobRecord(

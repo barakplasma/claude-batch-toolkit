@@ -18,7 +18,7 @@ The toolkit supports two batch backends:
 - **Anthropic** — direct Anthropic Message Batches API (requires `ANTHROPIC_API_KEY`)
 - **Vertex** — Google Cloud Vertex AI BatchPredictionJobs (requires `VERTEX_PROJECT`, `VERTEX_LOCATION`, `VERTEX_GCS_BUCKET`)
 
-`send_to_batch` accepts a `backend` parameter: `"auto"` (default), `"anthropic"`, or `"vertex"`. With `"auto"`, Anthropic is preferred when `ANTHROPIC_API_KEY` is set; otherwise Vertex is used. Both backends use the same model string (e.g., `claude-opus-4-6`).
+`send_to_batch` accepts a `backend` parameter: `"auto"` (default), `"anthropic"`, or `"vertex"`. With `"auto"`, Anthropic is preferred when `ANTHROPIC_API_KEY` is set; otherwise Vertex is used. Both backends use the same model string (e.g., `claude-opus-5-5`).
 
 Vertex job IDs are long resource paths like `projects/my-project/locations/us-central1/batchPredictionJobs/123456789`, while Anthropic job IDs look like `msgbatch_abc123`.
 
